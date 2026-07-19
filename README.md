@@ -3,7 +3,7 @@
 This is the **public distribution repository** for the YT Separator desktop app.
 
 - **Download the app**: https://ytseparator.com
-- **Contact**: wkq321@gmail.com
+- **Contact**: whalemindbass@gmail.com
 
 Source code is proprietary — see [ytseparator.com](https://ytseparator.com) for licensing details.
 
