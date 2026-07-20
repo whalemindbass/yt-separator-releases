@@ -292,6 +292,52 @@
     .demo-strip .demo-sub {
       text-align: center; color: var(--tx-3); font-size: 13px; margin-bottom: 32px;
     }
+    /* Demo player */
+    .demo-player {
+      max-width: 620px; margin: 0 auto 24px;
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .demo-play {
+      flex-shrink: 0;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--accent-fg);
+      border: 0;
+      cursor: pointer;
+      display: grid; place-items: center;
+      font-size: 14px;
+      transition: transform .08s, filter .16s;
+      box-shadow: 0 4px 14px -4px rgba(53,209,166,.5);
+    }
+    .demo-play:hover { filter: brightness(1.06); }
+    .demo-play:active { transform: scale(.94); }
+    .demo-play svg { width: 16px; height: 16px; fill: currentColor; }
+    .demo-play.loading svg { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .demo-track { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .demo-track-head {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+      font-size: 12.5px;
+    }
+    .demo-track-title { color: var(--tx-1); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .demo-track-attr { color: var(--tx-4); font-size: 11px; }
+    .demo-time { color: var(--tx-3); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; flex-shrink: 0; }
+    .demo-progress {
+      height: 4px; background: var(--elev);
+      border-radius: 2px; overflow: hidden;
+      cursor: pointer;
+    }
+    .demo-progress-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      transition: width .08s linear;
+    }
+
     .stem-toggle-row {
       display: flex; flex-wrap: wrap; justify-content: center;
       gap: 10px; max-width: 640px; margin: 0 auto;
@@ -505,7 +551,22 @@
   <section class="demo-strip reveal">
     <div class="container">
       <h2 data-i18n="demo.title">각 악기를 마음대로 켜고 끄세요</h2>
-      <p class="demo-sub" data-i18n="demo.sub">아래 칩을 눌러 감상해보세요 — 실제 앱에서도 이렇게 작동합니다.</p>
+      <p class="demo-sub" data-i18n="demo.sub">아래 칩을 눌러 실제로 들어보세요 — 실제 앱에서도 이렇게 작동합니다.</p>
+
+      <div class="demo-player">
+        <button class="demo-play" id="demo-play" aria-label="Play">
+          <svg viewBox="0 0 16 16"><path d="M4 3v10l9-5-9-5z"/></svg>
+        </button>
+        <div class="demo-track">
+          <div class="demo-track-head">
+            <span class="demo-track-title">Sound of Morning</span>
+            <span class="demo-track-attr" data-i18n="demo.attr">AI 생성 데모</span>
+          </div>
+          <div class="demo-progress" id="demo-progress"><div class="demo-progress-fill" id="demo-progress-fill"></div></div>
+        </div>
+        <span class="demo-time" id="demo-time">0:00 / 0:26</span>
+      </div>
+
       <div class="stem-toggle-row" id="stem-toggle-row">
         <button class="stem-chip on" data-stem="vocals"><span class="swatch"></span><span data-i18n="stem.vocals">보컬</span></button>
         <button class="stem-chip on" data-stem="drums"><span class="swatch"></span><span data-i18n="stem.drums">드럼</span></button>
@@ -638,11 +699,14 @@
         'dl.warn.strong': 'Windows Defender SmartScreen',
         'dl.warn.msg':    '경고가 표시될 수 있습니다. "추가 정보" → "실행" 으로 진행하세요.',
         'demo.title':     '각 악기를 마음대로 켜고 끄세요',
-        'demo.sub':       '아래 칩을 눌러 감상해보세요 — 실제 앱에서도 이렇게 작동합니다.',
+        'demo.sub':       '아래 칩을 눌러 실제로 들어보세요 — 실제 앱에서도 이렇게 작동합니다.',
+        'demo.attr':      'AI 생성 데모',
         'demo.hint.default':'6개 트랙 모두 재생 중',
         'demo.hint.some': '{n}개 트랙 재생 중',
         'demo.hint.none': '모든 트랙 꺼짐',
         'demo.hint.solo': '{name} 만 재생 중 (Solo)',
+        'demo.aria.play': '재생',
+        'demo.aria.pause':'일시정지',
         'stem.vocals':    '보컬',
         'stem.drums':     '드럼',
         'stem.bass':      '베이스',
@@ -690,11 +754,14 @@
         'dl.warn.strong': 'Windows Defender SmartScreen',
         'dl.warn.msg':    'may show a warning. Click "More info" → "Run anyway".',
         'demo.title':     'Toggle instruments freely',
-        'demo.sub':       'Tap the chips to try — the actual app works the same way.',
+        'demo.sub':       'Tap the chips and actually hear each track — this is how the app works.',
+        'demo.attr':      'AI-generated demo',
         'demo.hint.default':'All 6 tracks playing',
         'demo.hint.some': '{n} tracks playing',
         'demo.hint.none': 'All tracks muted',
         'demo.hint.solo': 'Only {name} playing (Solo)',
+        'demo.aria.play': 'Play',
+        'demo.aria.pause':'Pause',
         'stem.vocals':    'Vocals',
         'stem.drums':     'Drums',
         'stem.bass':      'Bass',
@@ -798,13 +865,147 @@
       });
     });
 
-    // ── Interactive stem demo ─────────────────
+    // ── Interactive stem demo (Web Audio sync playback) ─────────────
     const stemNames = { vocals: 'stem.vocals', drums: 'stem.drums', bass: 'stem.bass', guitar: 'stem.guitar', piano: 'stem.piano', other: 'stem.other' };
+    const STEM_LIST = ['vocals', 'drums', 'bass', 'guitar', 'piano', 'other'];
     const stemRow = document.getElementById('stem-toggle-row');
+    const playBtn = document.getElementById('demo-play');
+    const progressEl = document.getElementById('demo-progress');
+    const progressFill = document.getElementById('demo-progress-fill');
+    const timeEl = document.getElementById('demo-time');
+
+    const PLAY_SVG  = '<svg viewBox="0 0 16 16"><path d="M4 3v10l9-5-9-5z"/></svg>';
+    const PAUSE_SVG = '<svg viewBox="0 0 16 16"><path d="M4 3h3v10H4V3zm5 0h3v10H9V3z"/></svg>';
+    const LOAD_SVG  = '<svg viewBox="0 0 16 16"><path d="M8 2a6 6 0 0 1 6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
+
+    let audioCtx = null;
+    let stemBuffers = null;
+    let stemGains   = null;
+    let stemSources = null;
+    let isPlaying = false;
+    let startCtxTime = 0;
+    let pausedOffset = 0;
+    let duration = 26.16;
+    let loadPromise = null;
+
+    function fmtTime(s) {
+      s = Math.max(0, s || 0);
+      const m = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return `${m}:${String(sec).padStart(2, '0')}`;
+    }
+
+    function isStemOn(name) {
+      const chip = stemRow.querySelector(`.stem-chip[data-stem="${name}"]`);
+      return chip && chip.classList.contains('on');
+    }
+
+    async function ensureLoaded() {
+      if (audioCtx && stemBuffers) return;
+      if (loadPromise) return loadPromise;
+      playBtn.classList.add('loading');
+      playBtn.innerHTML = LOAD_SVG;
+      loadPromise = (async () => {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        stemBuffers = new Map();
+        stemGains   = new Map();
+        // 병렬 fetch + decode
+        await Promise.all(STEM_LIST.map(async n => {
+          const res = await fetch(`./samples/${n}.mp3`);
+          if (!res.ok) throw new Error(`fetch ${n}.mp3 failed`);
+          const arr = await res.arrayBuffer();
+          const buf = await audioCtx.decodeAudioData(arr);
+          stemBuffers.set(n, buf);
+          const g = audioCtx.createGain();
+          g.gain.value = isStemOn(n) ? 1 : 0;
+          g.connect(audioCtx.destination);
+          stemGains.set(n, g);
+        }));
+        duration = stemBuffers.get(STEM_LIST[0]).duration;
+      })();
+      try {
+        await loadPromise;
+      } finally {
+        playBtn.classList.remove('loading');
+      }
+    }
+
+    async function playDemo() {
+      try {
+        await ensureLoaded();
+      } catch (e) {
+        console.error(e);
+        playBtn.innerHTML = PLAY_SVG;
+        return;
+      }
+      if (audioCtx.state === 'suspended') { try { await audioCtx.resume(); } catch {} }
+      stemSources = new Map();
+      const startAt = pausedOffset % duration;
+      for (const name of STEM_LIST) {
+        const src = audioCtx.createBufferSource();
+        src.buffer = stemBuffers.get(name);
+        src.loop = true;
+        src.connect(stemGains.get(name));
+        src.start(0, startAt);
+        stemSources.set(name, src);
+      }
+      startCtxTime = audioCtx.currentTime - startAt;
+      isPlaying = true;
+      playBtn.innerHTML = PAUSE_SVG;
+      playBtn.setAttribute('aria-label', t('demo.aria.pause'));
+      tickProgress();
+    }
+
+    function pauseDemo() {
+      if (!isPlaying) return;
+      pausedOffset = (audioCtx.currentTime - startCtxTime) % duration;
+      for (const src of stemSources.values()) {
+        try { src.stop(); } catch {}
+      }
+      stemSources = null;
+      isPlaying = false;
+      playBtn.innerHTML = PLAY_SVG;
+      playBtn.setAttribute('aria-label', t('demo.aria.play'));
+    }
+
+    function tickProgress() {
+      if (!isPlaying) return;
+      const elapsed = (audioCtx.currentTime - startCtxTime) % duration;
+      progressFill.style.width = (elapsed / duration * 100) + '%';
+      timeEl.textContent = fmtTime(elapsed) + ' / ' + fmtTime(duration);
+      requestAnimationFrame(tickProgress);
+    }
+
+    playBtn.addEventListener('click', () => {
+      if (isPlaying) pauseDemo(); else playDemo();
+    });
+
+    progressEl.addEventListener('click', (e) => {
+      if (!audioCtx || !stemBuffers) return;
+      const r = progressEl.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+      pausedOffset = ratio * duration;
+      if (isPlaying) {
+        for (const src of stemSources.values()) { try { src.stop(); } catch {} }
+        stemSources = null; isPlaying = false;
+        playDemo();
+      } else {
+        progressFill.style.width = (ratio * 100) + '%';
+        timeEl.textContent = fmtTime(pausedOffset) + ' / ' + fmtTime(duration);
+      }
+    });
+
     stemRow.addEventListener('click', (e) => {
       const btn = e.target.closest('.stem-chip');
       if (!btn) return;
       btn.classList.toggle('on');
+      const stem = btn.dataset.stem;
+      // 로드 상태라면 gain 즉시 반영 (짧은 fade 로 클릭 노이즈 방지)
+      if (stemGains && stemGains.has(stem)) {
+        const g = stemGains.get(stem);
+        const target = btn.classList.contains('on') ? 1 : 0;
+        g.gain.setTargetAtTime(target, audioCtx.currentTime, 0.015);
+      }
       updateDemoHint();
     });
     function updateDemoHint() {
