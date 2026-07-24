@@ -105,9 +105,31 @@
     .comment .c-name{font-weight:600;font-size:12.5px;color:var(--tx-1)}
     .comment .c-when{font-size:11px;color:var(--tx-4)}
     .comment .c-text{font-size:13px;color:var(--tx-2);white-space:pre-wrap;line-height:1.55}
-    .comment .c-actions{margin-top:4px;display:flex;gap:8px}
-    .comment .c-actions button{background:none;border:0;color:var(--tx-4);font-size:11px;cursor:pointer;padding:0}
-    .comment .c-actions button:hover{color:var(--danger)}
+    .comment .c-actions{margin-top:4px;display:flex;gap:10px}
+    .comment .c-actions button{background:none;border:0;color:var(--tx-4);font-size:11px;cursor:pointer;padding:0;transition:color .12s}
+    .comment .c-actions button:hover{color:var(--tx-1)}
+    .comment .c-actions button.reply-btn:hover{color:var(--accent)}
+    .comment .c-actions button.del-btn:hover{color:var(--danger)}
+    .comment .c-actions button.rep-btn:hover{color:var(--danger)}
+
+    /* 답글 (대댓글) */
+    .comment.reply{margin-left:32px;background:var(--elev);border-left:2px solid var(--border-mid)}
+    .replies{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+    .reply-form-inline{
+      margin-top:10px;padding:10px;border-radius:6px;background:var(--elev);border:1px solid var(--border);
+      display:flex;flex-direction:column;gap:8px;
+    }
+    .reply-form-inline textarea{background:var(--surface);border:1px solid var(--border);color:var(--tx-1);padding:8px 10px;border-radius:5px;font:500 12.5px/1.4 var(--sans);min-height:56px;resize:vertical;outline:none}
+    .reply-form-inline textarea:focus{border-color:var(--accent)}
+    .reply-form-inline .row{display:flex;justify-content:flex-end;gap:8px}
+
+    /* Edit modal 재사용 스타일 */
+    .field{display:flex;flex-direction:column;gap:6px}
+    .field label{font-size:11.5px;font-weight:600;color:var(--tx-3);letter-spacing:.04em;text-transform:uppercase}
+    .field input,.field textarea,.field select{background:var(--elev);border:1px solid var(--border);color:var(--tx-1);padding:9px 12px;border-radius:6px;font:500 13px/1.4 var(--sans);outline:none;transition:border-color .14s}
+    .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent)}
+    .field textarea{min-height:80px;resize:vertical}
+    .field .hint{font-size:11.5px;color:var(--tx-4)}
 
     .empty{text-align:center;padding:40px 20px;color:var(--tx-4);font-size:13px}
 
@@ -161,6 +183,48 @@
       </div>
     </div>
   </main>
+
+  <!-- Edit post modal -->
+  <div class="modal-back" id="edit-modal">
+    <div class="modal">
+      <h2>게시글 수정</h2>
+      <div class="modal-body">
+        <div class="field">
+          <label>제목 (자동 · 수정 가능)</label>
+          <input id="e-title" type="text" maxlength="200" />
+        </div>
+        <div class="field">
+          <label>곡 이름</label>
+          <input id="e-song" type="text" maxlength="120" />
+        </div>
+        <div class="field">
+          <label>아티스트</label>
+          <input id="e-artist" type="text" maxlength="120" />
+        </div>
+        <div class="field">
+          <label>파트</label>
+          <select id="e-instrument">
+            <option value="">지정 안 함</option>
+            <option value="vocals">보컬</option>
+            <option value="guitar">기타</option>
+            <option value="bass">베이스</option>
+            <option value="drums">드럼</option>
+            <option value="piano">피아노</option>
+            <option value="other">기타 (그 외)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>코멘트</label>
+          <textarea id="e-desc" maxlength="2000"></textarea>
+        </div>
+        <div class="field hint" style="color:var(--tx-4)">YouTube URL 은 수정 불가 · 잘못됐다면 삭제 후 재게시</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="edit-cancel">취소</button>
+        <button class="btn primary" id="edit-submit">저장</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Report modal -->
   <div class="modal-back" id="rep-modal">
@@ -264,7 +328,7 @@
               ♥ <span id="like-count">${p.like_count}</span>
             </button>
             ${p.is_mine
-              ? '<button class="btn danger" id="btn-delete">삭제</button>'
+              ? '<button class="btn" id="btn-edit">수정</button><button class="btn danger" id="btn-delete">삭제</button>'
               : '<button class="btn" id="btn-report" title="신고">⚑</button>'}
           </div>
         </div>
@@ -289,6 +353,7 @@
       $('btn-like').onclick = toggleLike;
       const del = $('btn-delete'); if (del) del.onclick = deletePost;
       const rep = $('btn-report'); if (rep) rep.onclick = () => openReport('post', currentPost.id);
+      const edt = $('btn-edit');   if (edt) edt.onclick = openEdit;
       renderCommentForm();
     }
     function renderCommentForm() {
@@ -329,6 +394,28 @@
       else alert(r.data?.error || '삭제 실패');
     }
 
+    function commentHtml(c, isReply) {
+      const isMine = currentUser && currentUser.id === c.author.id;
+      const actions = [];
+      if (currentUser && !isReply) actions.push(`<button class="reply-btn" data-reply="${c.id}">답글</button>`);
+      if (isMine) actions.push(`<button class="del-btn" data-del="${c.id}">삭제</button>`);
+      else if (currentUser) actions.push(`<button class="rep-btn" data-report="${c.id}">신고</button>`);
+      return `
+        <div class="comment ${isReply ? 'reply' : ''}" data-id="${c.id}">
+          ${c.author.avatar ? `<img class="c-avatar" src="${escapeHtml(c.author.avatar)}" alt="" />` : '<div class="c-avatar"></div>'}
+          <div class="c-body">
+            <div class="c-head">
+              <span class="c-name">${escapeHtml(c.author.name)}</span>
+              <span class="c-when">${fmtWhen(c.created_at)}</span>
+            </div>
+            <div class="c-text">${escapeHtml(c.body)}</div>
+            ${actions.length ? `<div class="c-actions">${actions.join('')}</div>` : ''}
+            <div class="reply-form-slot" data-slot="${c.id}"></div>
+          </div>
+        </div>
+      `;
+    }
+
     async function loadComments() {
       const r = await api(`/posts/${postId}/comments`);
       const items = r.data?.items || [];
@@ -337,30 +424,31 @@
         list.innerHTML = '<div class="empty">첫 댓글을 남겨보세요</div>';
         return;
       }
-      list.innerHTML = items.map(c => {
-        const isMine = currentUser && currentUser.id === c.author.id;
-        const actionBtn = isMine
-          ? `<button data-del="${c.id}">삭제</button>`
-          : (currentUser ? `<button data-report="${c.id}">신고</button>` : '');
-        return `
-          <div class="comment" data-id="${c.id}">
-            ${c.author.avatar ? `<img class="c-avatar" src="${escapeHtml(c.author.avatar)}" alt="" />` : '<div class="c-avatar"></div>'}
-            <div class="c-body">
-              <div class="c-head">
-                <span class="c-name">${escapeHtml(c.author.name)}</span>
-                <span class="c-when">${fmtWhen(c.created_at)}</span>
-              </div>
-              <div class="c-text">${escapeHtml(c.body)}</div>
-              ${actionBtn ? `<div class="c-actions">${actionBtn}</div>` : ''}
-            </div>
-          </div>
-        `;
+      // 트리 구성: 루트 · 답글
+      const byId = new Map(items.map(c => [c.id, c]));
+      const roots = [];
+      const childrenOf = new Map();   // parent_id -> [children]
+      for (const c of items) {
+        if (c.parent_id && byId.has(c.parent_id)) {
+          if (!childrenOf.has(c.parent_id)) childrenOf.set(c.parent_id, []);
+          childrenOf.get(c.parent_id).push(c);
+        } else {
+          roots.push(c);
+        }
+      }
+      list.innerHTML = roots.map(root => {
+        const replies = (childrenOf.get(root.id) || []).sort((a,b) => a.created_at - b.created_at);
+        const replyBlock = replies.length
+          ? `<div class="replies">${replies.map(r => commentHtml(r, true)).join('')}</div>`
+          : '';
+        return commentHtml(root, false) + replyBlock;
       }).join('');
+
+      // 이벤트 바인딩
       list.querySelectorAll('[data-del]').forEach(btn => {
         btn.addEventListener('click', async () => {
           if (!confirm('이 댓글을 삭제할까요?')) return;
-          const id = btn.dataset.del;
-          const r = await api(`/comments/${id}`, { method: 'DELETE' });
+          const r = await api(`/comments/${btn.dataset.del}`, { method: 'DELETE' });
           if (r.data?.ok) loadComments();
           else alert(r.data?.error || '삭제 실패');
         });
@@ -368,7 +456,87 @@
       list.querySelectorAll('[data-report]').forEach(btn => {
         btn.addEventListener('click', () => openReport('comment', btn.dataset.report));
       });
+      list.querySelectorAll('[data-reply]').forEach(btn => {
+        btn.addEventListener('click', () => openReplyForm(btn.dataset.reply));
+      });
     }
+
+    function openReplyForm(parentId) {
+      // 다른 열려있는 답글 폼 닫기
+      document.querySelectorAll('.reply-form-slot').forEach(s => s.innerHTML = '');
+      const slot = document.querySelector(`.reply-form-slot[data-slot="${parentId}"]`);
+      if (!slot) return;
+      slot.innerHTML = `
+        <div class="reply-form-inline">
+          <textarea id="reply-input-${parentId}" maxlength="500" placeholder="답글 (500자)"></textarea>
+          <div class="row">
+            <button class="btn ghost" data-cancel="${parentId}">취소</button>
+            <button class="btn primary" data-submit="${parentId}">등록</button>
+          </div>
+        </div>
+      `;
+      const input = document.getElementById(`reply-input-${parentId}`);
+      input?.focus();
+      slot.querySelector(`[data-cancel="${parentId}"]`).onclick = () => { slot.innerHTML = ''; };
+      slot.querySelector(`[data-submit="${parentId}"]`).onclick = async () => {
+        const text = input.value.trim();
+        if (!text) return;
+        const btn = slot.querySelector(`[data-submit="${parentId}"]`);
+        btn.disabled = true;
+        const r = await api(`/posts/${postId}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body: text, parent_id: parentId }),
+        });
+        btn.disabled = false;
+        if (r.data?.ok) {
+          slot.innerHTML = '';
+          const cur = Number($('cmt-count').textContent) || 0;
+          $('cmt-count').textContent = cur + 1;
+          loadComments();
+        } else {
+          alert(r.data?.error || '등록 실패');
+        }
+      };
+    }
+
+    // ── Edit post ────────────
+    const editModal = $('edit-modal');
+    function openEdit() {
+      const p = currentPost;
+      $('e-title').value = p.title || '';
+      $('e-song').value = p.song_name || '';
+      $('e-artist').value = p.song_artist || '';
+      $('e-instrument').value = p.instrument || '';
+      $('e-desc').value = p.description || '';
+      editModal.classList.add('open');
+    }
+    function closeEdit() { editModal.classList.remove('open'); }
+    $('edit-cancel').onclick = closeEdit;
+    editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEdit(); });
+    $('edit-submit').onclick = async () => {
+      const body = {
+        title: $('e-title').value.trim(),
+        song_name: $('e-song').value.trim(),
+        song_artist: $('e-artist').value.trim() || null,
+        instrument: $('e-instrument').value || null,
+        description: $('e-desc').value.trim() || null,
+      };
+      if (!body.song_name) { alert('곡 이름은 필수입니다'); return; }
+      $('edit-submit').disabled = true;
+      const r = await api(`/posts/${postId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      $('edit-submit').disabled = false;
+      if (r.data?.ok) {
+        closeEdit();
+        await loadPost();   // 화면 새로고침
+      } else {
+        alert(r.data?.error || '저장 실패');
+      }
+    };
 
     // ── Report ───────────────
     const repModal = $('rep-modal');
