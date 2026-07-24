@@ -64,12 +64,50 @@
     .stat-value{font-size:18px;font-weight:700;color:var(--tx-1);font-variant-numeric:tabular-nums}
     .stat-label{font-size:11.5px;color:var(--tx-3);letter-spacing:.02em}
 
-    .section-title{
-      font-size:13px;font-weight:700;color:var(--tx-2);
-      margin:8px 0 14px;letter-spacing:.02em;
-      display:flex;align-items:baseline;gap:8px;
+    .tabs{
+      display:flex;gap:2px;
+      border-bottom:1px solid var(--border);
+      margin:8px 0 16px;
     }
-    .section-title .count{font-family:var(--mono);font-size:11px;color:var(--tx-4)}
+    .tab{
+      padding:10px 16px;background:transparent;border:0;
+      color:var(--tx-3);font:600 13px/1 var(--sans);
+      cursor:pointer;position:relative;
+      transition:color .14s;
+      border-bottom:2px solid transparent;margin-bottom:-1px;
+    }
+    .tab:hover{color:var(--tx-1)}
+    .tab.on{color:var(--accent);border-bottom-color:var(--accent)}
+    .tab .count{
+      display:inline-block;margin-left:6px;
+      font-family:var(--mono);font-size:11px;font-weight:600;
+      color:var(--tx-4);
+    }
+    .tab.on .count{color:var(--accent)}
+
+    /* Comment cards on profile */
+    .comment-card{
+      background:var(--surface);border:1px solid var(--border);border-radius:8px;
+      padding:14px 16px;display:flex;flex-direction:column;gap:8px;
+      cursor:pointer;transition:border-color .14s,transform .14s;
+    }
+    .comment-card:hover{border-color:var(--border-mid);transform:translateY(-1px)}
+    .comment-card .cc-body{
+      font-size:13px;color:var(--tx-1);line-height:1.55;
+      white-space:pre-wrap;word-break:break-word;
+    }
+    .comment-card .cc-meta{
+      display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+      font-size:11.5px;color:var(--tx-4);
+    }
+    .comment-card .cc-post{color:var(--tx-2)}
+    .comment-card .cc-post:hover{color:var(--accent)}
+    .comment-card .cc-tag{
+      display:inline-block;padding:1px 6px;
+      background:var(--elev);border:1px solid var(--border);
+      color:var(--tx-3);font-family:var(--mono);font-size:9.5px;font-weight:700;
+      border-radius:3px;letter-spacing:.06em;text-transform:uppercase;
+    }
 
     /* Post cards (feed 페이지와 동일 톤) */
     .feed{display:grid;grid-template-columns:1fr;gap:10px}
@@ -231,21 +269,33 @@
             </div>
           </div>
         </div>
-        <div class="section-title">게시한 커버 <span class="count" id="posts-count">${u.stats.posts}</span></div>
-        <div class="feed" id="feed"><div class="empty">불러오는 중…</div></div>
+        <div class="tabs">
+          <button class="tab on" data-tab="posts">게시글 <span class="count">${u.stats.posts}</span></button>
+          <button class="tab" data-tab="comments">댓글 <span class="count">${u.stats.comments}</span></button>
+        </div>
+        <div id="list"><div class="empty">불러오는 중…</div></div>
       `;
+      document.querySelectorAll('.tab').forEach(t => {
+        t.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+          t.classList.add('on');
+          const which = t.dataset.tab;
+          if (which === 'posts') loadPosts();
+          else loadComments();
+        });
+      });
     }
 
     async function loadPosts() {
-      const params = new URLSearchParams({ user: profileId, sort: 'recent' });
-      const r = await api('/posts?' + params.toString());
+      const list = $('list');
+      list.innerHTML = '<div class="empty">불러오는 중…</div>';
+      const r = await api('/posts?' + new URLSearchParams({ user: profileId, sort: 'recent' }).toString());
       const items = r.data?.items || [];
-      const feed = $('feed');
       if (!items.length) {
-        feed.outerHTML = '<div class="empty"><h3>아직 공유한 커버가 없어요</h3></div>';
+        list.innerHTML = '<div class="empty"><h3>아직 공유한 커버가 없어요</h3></div>';
         return;
       }
-      feed.innerHTML = items.map(p => {
+      list.innerHTML = '<div class="feed">' + items.map(p => {
         const thumb = `https://i.ytimg.com/vi/${p.video_id}/mqdefault.jpg`;
         const inst = p.instrument ? `<span class="instrument-badge" data-i="${p.instrument}">${INST_LABEL[p.instrument] || p.instrument}</span>` : '';
         return `
@@ -266,7 +316,30 @@
             </div>
           </div>
         `;
-      }).join('');
+      }).join('') + '</div>';
+    }
+
+    async function loadComments() {
+      const list = $('list');
+      list.innerHTML = '<div class="empty">불러오는 중…</div>';
+      const r = await api(`/users/${encodeURIComponent(profileId)}/comments`);
+      const items = r.data?.items || [];
+      if (!items.length) {
+        list.innerHTML = '<div class="empty"><h3>아직 작성한 댓글이 없어요</h3></div>';
+        return;
+      }
+      list.innerHTML = '<div class="feed">' + items.map(c => `
+        <div class="comment-card" onclick="location.href='./post.html?id=${encodeURIComponent(c.post.id)}'">
+          <div class="cc-body">${esc(c.body)}</div>
+          <div class="cc-meta">
+            ${c.is_reply ? '<span class="cc-tag">답글</span>' : ''}
+            <span>on</span>
+            <a class="cc-post" href="./post.html?id=${encodeURIComponent(c.post.id)}" onclick="event.stopPropagation()">${esc(c.post.title)}</a>
+            <span>·</span>
+            <span>${fmtWhen(c.created_at)}</span>
+          </div>
+        </div>
+      `).join('') + '</div>';
     }
 
     (async () => {
